@@ -116,7 +116,7 @@ BOE_Inflation_240315 %>%
   filter(q14 == 3) %>%
   ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
     geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
-    stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+    stat_bin(binwidth = 0.5, geom = "text", colour = "black", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
     geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
     geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
     geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
@@ -216,7 +216,7 @@ BOE_Inflation_240315 %>%
     geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
     geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
     geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
-    labs(title = "Percpetion Error Density (Q14 Response = 'Neither Satisfied Nor Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+    labs(title = "Perception Error Density (Q14 Response = 'Neither Satisfied Nor Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
     theme(legend.position = "none")+
     scale_fill_manual(values=q14_colours)
 ```
@@ -253,3 +253,49 @@ BOE_Inflation_240315 %>%
     theme(legend.position = "none")+
     scale_fill_manual(values=q14_colours)
 ```
+
+
+Failed regression function
+
+```{r}
+run_P_Q14_lm_timeseries <- function(data, dependent_var, predictor_var) {
+    m.P.q14.timeseries <- data %>%
+        mutate(q14 = as.numeric(q14)) %>%
+        group_by(yyyyqq)
+    formula_str <- paste(dependent_var, "~", predictor_var)
+    my_formula <- as.formula(formula_str)
+    m.P.q14.lm.timeseries <- m.P.q14.timeseries %>%
+        do(m.P.q14.lm = lm(my_formula, data = .))
+    m.P.q14.lm.timeseries.summaries <- tidy(m.P.q14.lm.timeseries, m.P.q14.lm)
+    return(m.P.q14.lm.timeseries.summaries)
+}
+```
+
+```{r}
+m.P.q14.lm.timeseries.results <- run_P_Q14_lm_timeseries(data = m.P.q14.test.data,
+                                                         dependent_var = "CPIH_perception_error_scale_2001", 
+                                                         predictor_var = "q14")
+```
+
+Successful regression table:
+
+```{r}
+m.P.q14.trends <- m.P.q14.test.data %>%
+    nest_by(yyyyqq) %>%
+    mutate(ModelModel = list(lm(CPIH_perception_error_scale_2001 ~ q14, data=data))) %>%
+    reframe(tidy(ModelModel))
+```
+
+Successful regression chart
+
+```{r}
+m.P.q14.trends %>%
+    ggplot(aes(x = timetrend, y = estimate)) +
+    geom_line(data = subset(m.P.q14.trends, term == "q14")) +
+    geom_line(data = subset(m.P.q14.trends, term == "(Intercept)"), aes(color = "red")) +
+    geom_ribbon(data = subset(m.P.q14.trends, term == "q14"),aes(ymin=estimate-std.error,ymax=estimate+std.error,alpha=0.1))+
+    geom_ribbon(data = subset(m.P.q14.trends, term == "(Intercept)"),aes(ymin=estimate-std.error,ymax=estimate+std.error,alpha=0.1,fill="red"))+
+    scale_x_continuous(breaks = 1:84, labels = unique_yyyyqq$yyyyqq)+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
