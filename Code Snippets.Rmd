@@ -1,0 +1,650 @@
+---
+title: "GCBQ Dissertation - N Melas"
+output: html_notebook
+---
+
+### Perception and Prediction Error Calculations
+
+#### Assigning BoE Intervals to CPIH
+
+**2001 Intervals**
+
+```{r}
+series_220324 <- series_220324 %>%
+	mutate(CPIH_BOEscale_2001 = case_when(
+	CPIH < 0 ~ 1,
+	CPIH == 0 ~ 0,
+	CPIH > 0 & CPIH < 1 ~ 0.5,
+	CPIH >= 1 & CPIH < 2 ~ 1.5,
+	CPIH >= 2 & CPIH < 3 ~ 2.5,
+	CPIH >= 3 & CPIH < 4 ~ 3.5,
+	CPIH >= 4 & CPIH < 5 ~ 4.5,
+	CPIH >= 5 ~ 5.5
+))
+```
+
+**2009 Intervals**
+
+```{r}
+series_220324 <- series_220324 %>%
+    mutate(CPIH_BOEscale_2009 = case_when(
+    CPIH < -5 ~ -5.5,
+    CPIH >= -5 & CPIH < -4 ~ -5,
+    CPIH >= -4 & CPIH < -3 ~ -4,
+    CPIH >= -3 & CPIH < -2 ~ -3,
+    CPIH >= -2 & CPIH < -1 ~ -2,
+    CPIH >= -1 & CPIH < 0 ~ -1,
+    CPIH == 0 ~ 0,
+    CPIH > 0 & CPIH < 1 ~ 1,
+    CPIH >= 1 & CPIH < 2 ~ 2,
+    CPIH >= 2 & CPIH < 3 ~ 3,
+    CPIH >= 3 & CPIH < 4 ~ 4,
+    CPIH >= 4 & CPIH < 5 ~ 5,
+    CPIH >= 5 & CPIH < 6 ~ 6,
+    CPIH >= 6 & CPIH < 7 ~ 7,
+    CPIH >= 7 & CPIH < 8 ~ 8,
+    CPIH >= 8 & CPIH < 9 ~ 9,
+    CPIH >= 9 & CPIH < 10 ~ 10,
+    CPIH >= 10 & CPIH < 11 ~ 11,
+    CPIH >= 11 & CPIH < 12 ~ 12,
+    CPIH >= 12 & CPIH < 13 ~ 13,
+    CPIH >= 13 & CPIH < 14 ~ 14,
+    CPIH >= 14 & CPIH < 15 ~ 15,
+    CPIH > 15 ~ 15.5))
+```
+
+#### Calculating Error Using BoE's 2001 Scaling
+
+##### Perception Error
+
+##### Prediction Error
+
+```{r}
+BOE_Inflation_240315 <-
+  left_join(BOE_Inflation_240315,series_220324 %>%
+	select(any_of(c("yyyyqq","yyyyqq12","CPIH_BOEscale_2001"))),
+  	by = c("yyyyqq" = "yyyyqq12")) %>%
+	mutate(CPIH_prediction_error_scale_2001_12 = CPIH_BOEscale_2001 - E1y) %>%
+	select(-CPIH_BOEscale_2001,-yyyyqq.y)
+```
+
+#### Calculating Error Using BoE's 2009 Scaling
+
+##### Perception Error
+
+```{r}
+BOE_Inflation_240315_2009 <-
+	left_join(BOE_Inflation_240315,series_220324 %>%
+              	select(any_of(c("yyyyqq","CPIH_BOEscale_2009"))),
+          	by = "yyyyqq") %>%
+	mutate(CPIH_perception_error_scale_2009 = CPIH_BOEscale_2009 - P_all) %>%
+	filter(yyyyqq >= 200901) %>%
+	select(-CPIH_BOEscale_2009,y)
+```
+
+##### Prediction Error
+
+```{r}
+BOE_Inflation_240315_2009 <-
+	left_join(BOE_Inflation_240315,series_220324 %>%
+              	select(any_of(c("yyyyqq","yyyyqq12","CPIH_BOEscale_2009"))),
+          	by = c("yyyyqq" = "yyyyqq12")) %>%
+	mutate(CPIH_prediction_error_scale_2009_12 = CPIH_BOEscale_2009 - E1y_all) %>%
+	filter(yyyyqq >= 200901) %>%
+	select(-CPIH_BOEscale_2009,-yyyyqq.y)
+```
+
+#### Histograms Charts
+
+##### Prediction Error (12 Months) - 2001 Scaling
+
+###### Overall
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 1 | q14 == 2 | q14 == 3 | q14 == 4 | q14 == 5) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+  labs(title = "Prediction Error Density - 12 Months (Excludes Q14 Response 'Do Not Know')", x = "Prediction Error - 12 Months (Intervals)", y = "Response Count", fill = "Q14 Response\n(Satisfaction with Bank of England)") +
+  scale_fill_manual(values=q14_colours, labels =
+	c("Very Satisfied", "Fairly Satisfied", "Neither Satisfied nor Dissatisfied", "Fairly Dissatisfied", "Very Dissatisfied"))
+```
+
+###### Q14 Response = "Very Satisfied"
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 1) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Satisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 2) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Fairly Satisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = 'Neither Satisfied nor Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 3) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Neither Satisfied nor Dissatisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = 'Fairly Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 4) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Fairly Dissatisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = 'Very Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 5) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Dissatisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Very Satisfied" or "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 1 | q14 == 2) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Satisfied' or 'Fairly Satisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+
+```
+
+###### Q14 Response = "Very Dissatisfied" or "Fairly Dissatisfied"
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 5 | q14 == 4) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2001_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) + sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2001_12) - sd(CPIH_prediction_error_scale_2001_12)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Dissatisfied' or 'Fairly Dissatisfied')", x = "Prediction Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+
+```
+
+##### Perception Error - 2001 Scaling
+
+###### Overall
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 1 | q14 == 2 | q14 == 3 | q14 == 4 | q14 == 5) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+  geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+  labs(title = "Perception Error Density (Excludes Q14 Response 'Do Not Know')", x = "Perception Error (Intervals)", y = "Response Count", fill = "Q14 Response\n(Satisfaction with Bank of England)") +
+  scale_fill_manual(values=q14_colours, labels =
+	c("Very Satisfied", "Fairly Satisfied", "Neither Satisfied nor Dissatisfied", "Fairly Dissatisfied", "Very Dissatisfied"))
+```
+
+###### **Q14 Response = 'Very Satisfied'**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 1) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = Fairly Satisfied'**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 2) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Fairly Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = "Neither Satisfied Nor Dissatisfied"**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 3) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "black", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Percpetion Error Density (Q14 Response = 'Neither Satisfied Nor Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = "Fairly Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 4) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Fairly Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = "Very Dissatisfied"**
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 5) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", linewidth = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Very Satisfied" or "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 1 | q14 == 2) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Satisfied' or 'Fairly Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+
+```
+
+###### Q14 Response = "Very Dissatisfied" or "Fairly Dissatisfied"
+
+```{r}
+BOE_Inflation_240315 %>%
+  filter(P != 99) %>%
+  filter(q14 == 5 | q14 == 4) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2001, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", linewidth = 3.5, aes(label = after_stat(count)), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) + sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2001) - sd(CPIH_perception_error_scale_2001)), color = "#000000", linewidth = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Dissatisfied' or 'Fairly Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+##### Prediction Error (12 Months) - 2009 Scaling
+
+###### Overall
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+	filter(E1y != 99) %>%
+	filter(q14 == 1 | q14 == 2 | q14 == 3 | q14 == 4 | q14 == 5) %>%
+	ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Excludes Q14 Response 'Do Not Know')", x = "Prediction Error - 12 Months (Intervals)", y = "Response Count", fill = "Q14 Response\n(Satisfaction with Bank of England)") +
+	scale_fill_manual(values=q14_colours, labels =
+                      	c("Very Satisfied", "Fairly Satisfied", "Neither Satisfied nor Dissatisfied", "Fairly Dissatisfied", "Very Dissatisfied"))
+```
+
+###### Q14 Response = "Very Satisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 1) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 2) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Fairly Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = 'Neither Satisfied nor Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 3) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "black", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Neither Satisfied nor Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = 'Fairly Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 4) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Fairly Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### **Q14 Response = 'Very Dissatisfied'**
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(E1y != 99) %>%
+  filter(q14 == 5) %>%
+  ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Very Satisfied" or "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+	filter(E1y != 99) %>%
+	filter(q14 == 1 | q14 == 2) %>%
+	ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Satisfied' or 'Fairly Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Very Dissatisfied" or "Fairly Dissatisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+	filter(E1y != 99) %>%
+	filter(q14 == 5 | q14 == 4) %>%
+	ggplot(aes(x = CPIH_prediction_error_scale_2009_12, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) + sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_prediction_error_scale_2009_12) - sd(CPIH_prediction_error_scale_2009_12)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Prediction Error Density - 12 Months (Q14 Response = 'Very Dissatisfied' or 'Fairly Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+##### Perception Error - 2008 Scaling
+
+###### Overall
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+	filter(P_all != 99) %>%
+	filter(q14 == 1 | q14 == 2 | q14 == 3 | q14 == 4 | q14 == 5) %>%
+	ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density - (Excludes Q14 Response 'Do Not Know')", x = "Perception Error (Intervals)", y = "Response Count", fill = "Q14 Response\n(Satisfaction with Bank of England)") +
+	scale_fill_manual(values=q14_colours, labels =
+                      	c("Very Satisfied", "Fairly Satisfied", "Neither Satisfied nor Dissatisfied", "Fairly Dissatisfied", "Very Dissatisfied"))
+```
+
+###### Q14 Response = "Very Satisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 1) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 2) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Fairly Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Neither Satisfied nor Dissatisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 3) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "black", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Neither Satisfied nor Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Fairly Dissatisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 4) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Fairly Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = Very Dissatisfied
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 5) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "identity") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Very Satisfied" or "Fairly Satisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 1 | q14 == 2) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Satisfied' or Fairly Satisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+###### Q14 Response = "Very Dissatisfied" or "Fairly Dissatisfied"
+
+```{r}
+BOE_Inflation_240315_2009 %>%
+  filter(P != 99) %>%
+  filter(q14 == 4 | q14 == 5) %>%
+  ggplot(aes(x = CPIH_perception_error_scale_2009, fill = q14_colours)) +
+	geom_histogram(binwidth = 0.5, linetype = "dashed", colour = "black", position = "stack") +
+	stat_bin(binwidth = 0.5, geom = "text", colour = "white", size = 3.5, aes(label = ..count..), position = position_stack(vjust = 0.5)) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009)), color = "#000000", size = 1.25) +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) + sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	geom_vline(aes(xintercept = mean(CPIH_perception_error_scale_2009) - sd(CPIH_perception_error_scale_2009)), color = "#000000", size = 1, linetype = "dashed") +
+	labs(title = "Perception Error Density (Q14 Response = 'Very Dissatisfied' or Fairly Dissatisfied')", x = "Perception Error (Intervals)", y = "Response Count") +
+	theme(legend.position = "none")+
+	scale_fill_manual(values=q14_colours)
+```
+
+
